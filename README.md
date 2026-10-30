@@ -46,7 +46,7 @@ OCR needs both the Python `pytesseract` package (included in `requirements.txt`)
 
 ## Deploy to Vercel
 
-The root `Dockerfile` and `vercel.json` configure the Vercel Container runtime. The image installs Tesseract, so scanned PDFs and images can use OCR. Vercel builds the root `Dockerfile`; the app detects Vercel's runtime environment and applies its smaller cloud limits automatically.
+The root `Dockerfile.vercel` configures a Vercel container function and installs Tesseract, so scanned PDFs and images can use OCR. Vercel routes the app through the container image, and the app applies its smaller cloud limits automatically. The regular `Dockerfile` remains available for local Docker use.
 
 Vercel Functions cap request and response bodies at 4.5 MB. The cloud profile therefore limits uploads to 3 MiB per file and 4 MiB per batch, PDFs to 10 pages, images to 10 frames, and each spreadsheet to 20,000 cells. These cloud limits are separate from the larger local limits. Vercel's local filesystem is temporary: the cloud results library can reset when an instance is replaced. Use the local app for durable result history until a persistent database is connected.
 
@@ -89,4 +89,5 @@ Defaults protect the service from very large uploads and pathological workbooks.
 Vercel uses lower upload, page, and spreadsheet limits to stay within its function payload and execution constraints. The browser workspace reads those limits from `/health` and displays the cloud storage behavior.
 
 For a scanned PDF, OCR is triggered page by page only where embedded text is missing or too sparse. If Tesseract is unavailable, digital pages still extract and scan pages return partial results with warnings. Corrupt or unsupported files return an error object without stopping other files in the request.
+
 
