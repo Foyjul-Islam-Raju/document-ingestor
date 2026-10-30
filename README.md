@@ -1,5 +1,7 @@
 # Document Ingestion API
 
+**Live app:** [document-ingestor.vercel.app](https://document-ingestor.vercel.app/)
+
 A batch upload service for PDF, JPG/JPEG, PNG, TIFF, XLSX, XLS, and CSV files. Each file produces its own result, so a damaged file or an OCR failure does not discard the rest of a batch.
 ```mermaid
 flowchart LR
