@@ -20,10 +20,6 @@
     .topbar { height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 max(22px, calc((100vw - 1120px) / 2)); background: #fff; border-bottom: 1px solid var(--line); }
     .brand { display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 850; letter-spacing: .11em; }
     .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(145deg, #315fe4, #6d91fa); color: white; letter-spacing: -.06em; box-shadow: 0 4px 10px #315fe433; }
-    .topbar-right { display: flex; align-items: center; gap: 9px; }
-    .tag { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 10px; color: #54647e; font-size: 11px; white-space: nowrap; }
-    .tag-dot { width: 7px; height: 7px; border-radius: 50%; background: #35a879; }
-    .tag-dot.warn { background: #d89a23; }
     main { width: min(1120px, calc(100% - 40px)); margin: 28px auto 50px; }
     .hero { overflow: hidden; position: relative; padding: 29px 34px 31px; border-radius: 20px; background: linear-gradient(112deg, #172a4a 0%, #244579 54%, #315fba 100%); color: #fff; box-shadow: 0 13px 28px rgba(26, 57, 107, .16); }
     .hero:after { content: ""; pointer-events: none; position: absolute; width: 360px; height: 360px; border: 1px solid #ffffff14; border-radius: 50%; right: -100px; top: -220px; box-shadow: 0 0 0 30px #ffffff08, 0 0 0 60px #ffffff05; }
@@ -142,8 +138,6 @@
     }
     @media (max-width: 520px) {
       .topbar { height: 58px; }
-      .tag { padding: 5px 7px; font-size: 9px; }
-      .topbar-right { gap: 5px; }
       .hero { border-radius: 15px; }
       .hero p { font-size: 12px; }
       .card-head, .card-body, .pipeline-body { padding-left: 14px; padding-right: 14px; }
@@ -163,10 +157,6 @@
 <body>
   <header class="topbar">
     <div class="brand"><span class="brand-mark" aria-hidden="true">DI</span><span>DOCINTAKE</span></div>
-    <div class="topbar-right">
-      <span class="tag" id="ocr-tag"><span class="tag-dot warn" id="ocr-dot"></span><span id="ocr-tag-text">Checking OCR…</span></span>
-      <span class="tag"><span class="tag-dot"></span>Local workspace</span>
-    </div>
   </header>
   <main>
     <section class="hero" aria-labelledby="page-title">
@@ -440,12 +430,12 @@
       }
 
       async function showOcrStatus() {
-        const tagText = document.getElementById("ocr-tag-text"), dot = document.getElementById("ocr-dot"), note = document.getElementById("ocr-note"), noteText = document.getElementById("ocr-note-text");
+        const note = document.getElementById("ocr-note"), noteText = document.getElementById("ocr-note-text");
         try {
           const data = await readJson(await fetch("/health/ocr"));
-          if (data.available) { tagText.textContent = "OCR ready"; dot.classList.remove("warn"); note.classList.add("ready"); noteText.textContent = "Tesseract is ready on this computer. Scanned PDFs and images can be recognized."; }
-          else { tagText.textContent = "OCR setup needed"; noteText.textContent = data.message || "Install the Tesseract engine, then restart the local server."; }
-        } catch (_) { tagText.textContent = "OCR status unavailable"; noteText.textContent = "The OCR engine status could not be checked. Digital PDF text and spreadsheet parsing are still available."; }
+          if (data.available) { note.classList.add("ready"); noteText.textContent = "Tesseract is ready on this computer. Scanned PDFs and images can be recognized."; }
+          else { noteText.textContent = data.message || "Install the Tesseract engine, then restart the local server."; }
+        } catch (_) { noteText.textContent = "The OCR engine status could not be checked. Digital PDF text and spreadsheet parsing are still available."; }
       }
 
       async function applyServiceConfig() {
