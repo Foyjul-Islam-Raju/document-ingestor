@@ -1,0 +1,28 @@
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    VERCEL=1 \
+    TESSERACT_LANG=eng \
+    MAX_UPLOAD_BYTES=3145728 \
+    MAX_BATCH_BYTES=4194304 \
+    MAX_TABLE_CELLS=20000 \
+    MAX_TABLE_ROWS=10000 \
+    MAX_PDF_PAGES=10 \
+    MAX_IMAGE_FRAMES=10 \
+    MAX_OCR_PIXELS=20000000
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends tesseract-ocr tesseract-ocr-eng \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY app.py .
+COPY document_ingestor ./document_ingestor
+COPY static ./static
+
+EXPOSE 80
+CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-80}"]
+
