@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7fc">
+  <title>DocIntake — Document workspace</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #152744; --muted: #65748d; --line: #e1e8f2; --canvas: #f4f7fc;
+      --blue: #3464e8; --blue-dark: #234fca; --blue-pale: #edf3ff;
+      --green: #18744e; --green-bg: #e9f7ef; --amber: #976111; --amber-bg: #fff6df;
+      --red: #a13f43; --red-bg: #fff0ef; --shadow: 0 14px 34px rgba(25, 48, 88, .06);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: var(--canvas); font: 14px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .topbar { height: 64px; display: flex; align-items: center; justify-content: space-between; padding: 0 max(22px, calc((100vw - 1120px) / 2)); background: #fff; border-bottom: 1px solid var(--line); }
+    .brand { display: flex; align-items: center; gap: 10px; font-size: 11px; font-weight: 850; letter-spacing: .11em; }
+    .brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(145deg, #315fe4, #6d91fa); color: white; letter-spacing: -.06em; box-shadow: 0 4px 10px #315fe433; }
+    .topbar-right { display: flex; align-items: center; gap: 9px; }
+    .tag { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); background: #fff; border-radius: 999px; padding: 6px 10px; color: #54647e; font-size: 11px; white-space: nowrap; }
+    .tag-dot { width: 7px; height: 7px; border-radius: 50%; background: #35a879; }
+    .tag-dot.warn { background: #d89a23; }
+    main { width: min(1120px, calc(100% - 40px)); margin: 28px auto 50px; }
+    .hero { overflow: hidden; position: relative; padding: 29px 34px 31px; border-radius: 20px; background: linear-gradient(112deg, #172a4a 0%, #244579 54%, #315fba 100%); color: #fff; box-shadow: 0 13px 28px rgba(26, 57, 107, .16); }
+    .hero:after { content: ""; pointer-events: none; position: absolute; width: 360px; height: 360px; border: 1px solid #ffffff14; border-radius: 50%; right: -100px; top: -220px; box-shadow: 0 0 0 30px #ffffff08, 0 0 0 60px #ffffff05; }
+    .eyebrow { text-transform: uppercase; letter-spacing: .15em; font-size: 10px; font-weight: 800; color: #bcd0ff; }
+    h1 { position: relative; z-index: 1; margin: 9px 0 8px; max-width: 780px; font-size: clamp(30px, 4.2vw, 43px); line-height: 1.1; letter-spacing: -.04em; }
+    .hero p { max-width: 710px; margin: 0; color: #e0eaff; font-size: 14px; }
+    .hero-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 18px; }
+    .hero-chip { border: 1px solid #ffffff2b; background: #ffffff12; border-radius: 7px; padding: 4px 8px; color: #eef4ff; font-size: 10px; font-weight: 700; }
+    .workspace-grid { display: grid; grid-template-columns: minmax(0, 1.06fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; align-items: stretch; }
+    .card { min-width: 0; background: #fff; border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+    .card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 17px 19px 13px; }
+    .card-head h2, .library-heading h2 { margin: 0; font-size: 14px; letter-spacing: -.01em; }
+    .card-head p, .library-heading p { margin: 3px 0 0; color: var(--muted); font-size: 11px; }
+    .step { color: #8190a7; font-size: 10px; font-weight: 750; letter-spacing: .08em; white-space: nowrap; }
+    .card-body { padding: 0 19px 19px; }
+    .dropzone { display: flex; min-height: 156px; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 19px; border: 1.5px dashed #b8c9ee; border-radius: 13px; background: linear-gradient(135deg, #f8faff, #f1f5ff); transition: .16s ease; outline: none; }
+    .dropzone:hover, .dropzone:focus-visible, .dropzone.dragover { border-color: var(--blue); background: #edf3ff; box-shadow: inset 0 0 0 1px var(--blue); }
+    .drop-icon { display: grid; place-items: center; width: 34px; height: 34px; margin-bottom: 7px; border: 1px solid #dce6fb; border-radius: 10px; background: #fff; color: var(--blue); font-size: 18px; }
+    .drop-title { font-size: 12px; font-weight: 750; }
+    .drop-hint { margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .formats { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin-top: 11px; }
+    .format-chip { padding: 2px 6px; border: 1px solid #e3eaf5; border-radius: 5px; background: #fff; color: #586985; font-size: 9px; font-weight: 800; }
+    .limits { margin: 9px 0 0; color: #8793a7; font-size: 10px; }
+    .queue { margin-top: 12px; display: grid; gap: 6px; max-height: 205px; overflow: auto; }
+    .queue:empty { display: none; }
+    .queue-row { display: flex; align-items: center; gap: 9px; min-width: 0; border: 1px solid var(--line); border-radius: 9px; padding: 7px 9px; }
+    .file-badge { display: grid; flex: 0 0 31px; place-items: center; width: 31px; height: 32px; border-radius: 7px; background: #eef3ff; color: #355cba; font-size: 8px; font-weight: 900; }
+    .file-meta { flex: 1; min-width: 0; }
+    .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-weight: 700; }
+    .file-size { color: #8490a4; font-size: 9px; }
+    .icon-button { flex: 0 0 26px; width: 26px; height: 26px; border: 0; border-radius: 6px; background: transparent; color: #78869a; font-size: 17px; }
+    .icon-button:hover { background: #fff0ef; color: var(--red); }
+    .actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 13px; }
+    .selection-count { color: var(--muted); font-size: 10px; }
+    .button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; padding: 8px 12px; border: 1px solid transparent; border-radius: 8px; font-size: 10px; font-weight: 750; transition: .15s ease; }
+    .button-primary { background: var(--blue); color: #fff; box-shadow: 0 4px 9px #3464e82a; }
+    .button-primary:hover:not(:disabled) { background: var(--blue-dark); transform: translateY(-1px); }
+    .button-primary:disabled { cursor: not-allowed; opacity: .5; box-shadow: none; }
+    .button-secondary { background: #fff; border-color: var(--line); color: #405471; }
+    .button-secondary:hover { background: #f7f9fd; border-color: #c9d4e5; }
+    .button-danger { background: #fff5f4; border-color: #f5d9d7; color: var(--red); }
+    .button-danger:hover { background: #ffeceb; }
+    .message { display: none; margin-top: 10px; padding: 8px 10px; border-radius: 8px; font-size: 10px; }
+    .message.visible { display: block; }
+    .message.error { background: var(--red-bg); color: var(--red); }
+    .message.info { background: var(--blue-pale); color: #385586; }
+    .message.success { background: var(--green-bg); color: var(--green); }
+    .pipeline-body { padding: 0 19px 17px; }
+    .pipeline { list-style: none; counter-reset: steps; margin: 0; padding: 0; display: grid; gap: 11px; }
+    .pipeline li { counter-increment: steps; display: grid; grid-template-columns: 25px 1fr; gap: 9px; color: #596a84; font-size: 10px; }
+    .pipeline li:before { content: "0" counter(steps); display: grid; place-items: center; width: 23px; height: 23px; border-radius: 7px; background: #f1f5fd; color: #4667b5; font-size: 8px; font-weight: 850; }
+    .pipeline strong { color: #263b5b; }
+    .pipeline-note { margin-top: 12px; padding: 9px 10px; border-radius: 8px; background: #f7f9fc; color: #5f6f87; font-size: 9px; }
+    .ocr-note { display: flex; align-items: flex-start; gap: 7px; margin-top: 9px; padding: 9px 10px; border: 1px solid #f0dfb5; border-radius: 8px; background: #fff9e9; color: #735517; font-size: 9px; }
+    .ocr-note.ready { border-color: #d5eadb; background: #f0faf3; color: #286648; }
+    .ocr-note strong { white-space: nowrap; }
+    .batch-card, .library-card { margin-top: 16px; padding: 17px 19px; }
+    .batch-heading, .library-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+    .batch-heading h2 { margin: 0; font-size: 14px; }
+    .batch-subtitle { margin-top: 3px; color: var(--muted); font-size: 10px; }
+    .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px; margin-top: 13px; }
+    .stat { padding: 8px 10px; border-radius: 9px; background: #f5f7fb; }
+    .stat strong { display: block; font-size: 17px; line-height: 1.1; }
+    .stat span { display: block; margin-top: 3px; color: #718099; font-size: 9px; }
+    .result-list { display: grid; gap: 9px; margin-top: 12px; }
+    .result-card { border: 1px solid var(--line); border-radius: 11px; overflow: hidden; background: white; }
+    .result-top { display: flex; align-items: center; gap: 9px; padding: 10px 11px; }
+    .result-name { flex: 1; min-width: 0; }
+    .result-name strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; }
+    .result-meta { margin-top: 2px; color: #78869b; font-size: 9px; }
+    .status { display: inline-flex; align-items: center; border-radius: 999px; padding: 4px 7px; font-size: 8px; font-weight: 850; text-transform: uppercase; letter-spacing: .035em; white-space: nowrap; }
+    .status-success { background: var(--green-bg); color: var(--green); }
+    .status-partial { background: var(--amber-bg); color: var(--amber); }
+    .status-error { background: var(--red-bg); color: var(--red); }
+    .result-detail { border-top: 1px solid #edf0f5; padding: 9px 11px 11px; }
+    .warning, .error-box { margin: 0 0 7px; padding: 8px 9px; border-radius: 7px; font-size: 9px; }
+    .warning { background: var(--amber-bg); color: #78550e; }
+    .error-box { background: var(--red-bg); color: #92383c; }
+    details.page, details.sheet { border: 1px solid #e8edf4; border-radius: 8px; margin-top: 6px; overflow: hidden; }
+    details summary { cursor: pointer; padding: 8px 9px; background: #fafbfd; color: #435772; font-size: 9px; font-weight: 750; }
+    details summary:hover { background: #f4f7fb; }
+    .text-preview { max-height: 290px; overflow: auto; padding: 10px; margin: 0; color: #273951; white-space: pre-wrap; overflow-wrap: anywhere; font: 10px/1.6 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .table-wrap { max-height: 290px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 9px; }
+    td { max-width: 250px; padding: 6px 8px; border-top: 1px solid #edf0f4; border-right: 1px solid #edf0f4; white-space: pre-wrap; overflow-wrap: anywhere; vertical-align: top; }
+    tr:first-child td { background: #f5f8fc; color: #354963; font-weight: 800; }
+    .preview-note { padding: 7px 9px; border-top: 1px solid #edf0f4; color: #78869b; font-size: 9px; }
+    .empty-text { padding: 10px; color: #8390a4; font-size: 10px; font-style: italic; }
+    .detail-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+    .library-heading { align-items: center; }
+    .library-toolbar { display: flex; justify-content: flex-end; gap: 7px; margin: 12px 0; }
+    .search-input, .type-select { min-height: 34px; border: 1px solid #d9e2ef; border-radius: 8px; background: #fff; color: #283d5b; padding: 7px 10px; font-size: 10px; outline: none; }
+    .search-input { width: min(350px, 100%); }
+    .type-select { min-width: 130px; }
+    .search-input:focus, .type-select:focus { border-color: #7394ed; box-shadow: 0 0 0 3px #3464e81c; }
+    .library-summary { display: flex; flex-wrap: wrap; gap: 6px; }
+    .summary-pill { padding: 4px 8px; border: 1px solid var(--line); border-radius: 999px; color: #5a6a82; background: #fff; font-size: 9px; font-weight: 750; }
+    .library-list { display: grid; gap: 9px; margin-top: 10px; }
+    .library-row { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+    .library-row-top { display: flex; gap: 9px; align-items: center; padding: 10px; }
+    .library-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-left: auto; }
+    .library-actions .button { min-height: 28px; padding: 5px 8px; font-size: 9px; }
+    .library-detail { padding: 0 10px 10px; }
+    .empty-state { margin-top: 10px; padding: 20px 12px; border: 1px dashed #d6dfec; border-radius: 10px; color: #77859a; text-align: center; font-size: 10px; }
+    .footer-note { padding: 10px 2px 0; color: #8490a2; text-align: center; font-size: 9px; }
+    .hidden { display: none !important; }
+    .spinner { width: 12px; height: 12px; border: 2px solid #ffffff66; border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    button:focus-visible, input:focus-visible, select:focus-visible, .dropzone:focus-visible { outline: 3px solid #3464e84a; outline-offset: 2px; }
+    @media (max-width: 760px) {
+      main { width: min(100% - 28px, 640px); margin-top: 16px; }
+      .topbar { padding: 0 14px; }
+      .hero { padding: 24px 21px; }
+      .workspace-grid { grid-template-columns: 1fr; }
+      .pipeline { gap: 9px; }
+    }
+    @media (max-width: 520px) {
+      .topbar { height: 58px; }
+      .tag { padding: 5px 7px; font-size: 9px; }
+      .topbar-right { gap: 5px; }
+      .hero { border-radius: 15px; }
+      .hero p { font-size: 12px; }
+      .card-head, .card-body, .pipeline-body { padding-left: 14px; padding-right: 14px; }
+      .batch-card, .library-card { padding: 14px; }
+      .library-heading { align-items: flex-start; flex-direction: column; }
+      .library-toolbar { display: grid; grid-template-columns: 1fr 120px; }
+      .library-toolbar .button { grid-column: 1 / -1; }
+      .search-input { width: 100%; }
+      .library-row-top { align-items: flex-start; flex-wrap: wrap; }
+      .library-actions { width: 100%; margin-left: 40px; }
+      .stats { gap: 5px; }
+      .stat { padding: 7px; }
+      .stat strong { font-size: 15px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true">DI</span><span>DOCINTAKE</span></div>
+    <div class="topbar-right">
+      <span class="tag" id="ocr-tag"><span class="tag-dot warn" id="ocr-dot"></span><span id="ocr-tag-text">Checking OCR…</span></span>
+      <span class="tag"><span class="tag-dot"></span>Local workspace</span>
+    </div>
+  </header>
+  <main>
+    <section class="hero" aria-labelledby="page-title">
+      <div class="eyebrow">Document workspace</div>
+      <h1 id="page-title">Turn documents into usable data.</h1>
+      <p>Upload PDFs, scans, images, Excel workbooks, or CSV files. Extract text, inspect spreadsheet rows, and find saved results from one local workspace.</p>
+      <div class="hero-chips" aria-label="Supported tasks">
+        <span class="hero-chip">Multi-file batches</span><span class="hero-chip">Page-by-page OCR</span><span class="hero-chip">Structured sheets</span><span class="hero-chip">Searchable local history</span>
+      </div>
+    </section>
+
+    <div class="workspace-grid">
+      <section class="card" aria-labelledby="upload-heading">
+        <div class="card-head"><div><h2 id="upload-heading">Upload documents</h2><p>Files are processed independently, so one damaged file won’t stop the batch.</p></div><span class="step">01 · Upload</span></div>
+        <div class="card-body">
+          <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="Choose multiple documents or drop files here">
+            <span class="drop-icon" aria-hidden="true">↑</span>
+            <span class="drop-title">Choose or drop multiple files</span>
+            <span class="drop-hint">Select documents from your device or drag them into this area</span>
+            <div class="formats" aria-label="Supported file types"><span class="format-chip">PDF</span><span class="format-chip">JPG</span><span class="format-chip">PNG</span><span class="format-chip">TIFF</span><span class="format-chip">XLSX</span><span class="format-chip">XLS</span><span class="format-chip">CSV</span></div>
+            <p class="limits" id="upload-limits">Up to 20 files · 50 MB each · 200 MB per batch</p>
+          </div>
+          <input id="file-input" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.tif,.tiff,.xlsx,.xls,.csv" hidden>
+          <div id="queue" class="queue" aria-label="Selected files"></div>
+          <div class="actions"><span id="selection-count" class="selection-count">No files selected</span><button id="process-button" type="button" class="button button-primary" disabled>Process documents <span aria-hidden="true">→</span></button></div>
+          <div id="upload-message" class="message" role="status" aria-live="polite"></div>
+        </div>
+      </section>
+
+      <aside class="card" aria-labelledby="pipeline-heading">
+        <div class="card-head"><div><h2 id="pipeline-heading">Processing pipeline</h2><p>Clear results for digital, scanned, and structured files.</p></div><span class="step">02 · Extract</span></div>
+        <div class="pipeline-body">
+          <ol class="pipeline">
+            <li><span><strong>Validate each file.</strong> Damaged, encrypted, empty, or unsupported files receive a clear per-file status.</span></li>
+            <li><span><strong>Read every PDF page.</strong> Embedded text is extracted directly; scanned pages use OCR.</span></li>
+            <li><span><strong>Improve image readability.</strong> Images and TIFF frames are cleaned up before recognition.</span></li>
+            <li><span><strong>Parse structured data.</strong> Every workbook sheet is read; CSV encoding and delimiter are detected.</span></li>
+            <li><span><strong>Review and search.</strong> Inspect page text and row previews, then search saved extraction results.</span></li>
+          </ol>
+          <div class="ocr-note" id="ocr-note"><strong>OCR setup:</strong><span id="ocr-note-text">Checking the local OCR engine…</span></div>
+          <div class="pipeline-note" id="storage-note"><strong>Local storage:</strong> extracted results and filenames are saved in this app’s local database. Original uploaded files are deleted after processing.</div>
+        </div>
+      </aside>
+    </div>
+
+    <section class="card batch-card hidden" id="batch-section" aria-labelledby="batch-heading">
+      <div class="batch-heading"><div><h2 id="batch-heading">Latest batch</h2><div class="batch-subtitle" id="batch-subtitle"></div></div><button type="button" class="button button-secondary" id="batch-download">Download batch JSON</button></div>
+      <div class="stats" id="batch-stats"></div>
+      <div id="batch-message" class="message" role="status" aria-live="polite"></div>
+      <div class="result-list" id="batch-results"></div>
+    </section>
+
+    <section class="card library-card" aria-labelledby="library-heading">
+      <div class="library-heading"><div><h2 id="library-heading">Processed documents</h2><p>Search filenames or extracted content. Open an item to inspect or download its full result.</p></div><div class="library-summary" id="library-summary"></div></div>
+      <form id="library-form" class="library-toolbar">
+        <input class="search-input" id="search-input" type="search" maxlength="200" placeholder="Search filename or extracted text" aria-label="Search filename or extracted text">
+        <select class="type-select" id="type-select" aria-label="Filter by file type"><option value="">All file types</option><option value="pdf">PDF</option><option value="jpeg">JPG</option><option value="png">PNG</option><option value="tiff">TIFF</option><option value="xlsx">XLSX</option><option value="xls">XLS</option><option value="csv">CSV</option></select>
+        <button class="button button-primary" id="refresh-button" type="submit">Refresh results</button>
+      </form>
+      <div id="library-status" class="message" role="status" aria-live="polite"></div>
+      <div id="library-list" class="library-list"></div>
+      <p class="footer-note">Only extraction results are retained locally. Delete any saved result from its card.</p>
+    </section>
+  </main>
+
+  <script>
+    (function () {
+      "use strict";
+      let MAX_FILES = 20, MAX_FILE_BYTES = 50 * 1024 * 1024, MAX_BATCH_BYTES = 200 * 1024 * 1024;
+      const allowed = new Set(["pdf", "jpg", "jpeg", "png", "tif", "tiff", "xlsx", "xls", "csv"]);
+      const state = { files: [], batch: null, details: new Map(), requestId: 0, searchTimer: null };
+      const input = document.getElementById("file-input"), dropzone = document.getElementById("dropzone");
+      const queue = document.getElementById("queue"), processButton = document.getElementById("process-button");
+      const uploadMessage = document.getElementById("upload-message"), libraryList = document.getElementById("library-list");
+
+      function escapeHtml(value) {
+        return String(value == null ? "" : value).replace(/[&<>"']/g, function (char) {
+          return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char];
+        });
+      }
+      function extension(name) { const bits = String(name).toLowerCase().split("."); return bits.length > 1 ? bits[bits.length - 1] : ""; }
+      function badge(name) { return extension(name).toUpperCase().replace("JPEG", "JPG").replace("TIFF", "TIF").slice(0, 4) || "FILE"; }
+      function bytes(value) {
+        if (!value) return "0 B";
+        if (value < 1024) return value + " B";
+        if (value < 1024 * 1024) return (value / 1024).toFixed(0) + " KB";
+        return (value / 1024 / 1024).toFixed(1) + " MB";
+      }
+      function readableDate(value) { const date = new Date(value); return Number.isNaN(date.valueOf()) ? "" : date.toLocaleString(); }
+      function announce(element, text, kind) { element.textContent = text; element.className = "message visible " + kind; }
+      function clearMessage(element) { element.textContent = ""; element.className = "message"; }
+      function statusName(status) { return status === "success" ? "Complete" : status === "partial" ? "Partial" : "Failed"; }
+      function statusClass(status) { return status === "success" ? "status-success" : status === "partial" ? "status-partial" : "status-error"; }
+      function itemCounts(files) { return files.reduce(function (total, file) { return total + file.size; }, 0); }
+
+      async function readJson(response) {
+        const text = await response.text();
+        let data = {};
+        try { data = text ? JSON.parse(text) : {}; }
+        catch (_) {
+          if (!response.ok) throw new Error("The service returned an error (HTTP " + response.status + "). Check its log and retry.");
+          throw new Error("The service returned an unreadable response. Please retry.");
+        }
+        if (!response.ok) throw new Error(data && typeof data.detail === "string" ? data.detail : "The request failed (HTTP " + response.status + ").");
+        return data;
+      }
+
+      function addFiles(incoming) {
+        clearMessage(uploadMessage);
+        const next = state.files.slice(), seen = new Set(next.map(function (file) { return [file.name, file.size, file.lastModified].join(":"); }));
+        const errors = [];
+        Array.from(incoming).forEach(function (file) {
+          const key = [file.name, file.size, file.lastModified].join(":");
+          if (!allowed.has(extension(file.name))) { errors.push(file.name + ": unsupported format."); return; }
+          if (file.size > MAX_FILE_BYTES) { errors.push(file.name + ": exceeds the " + bytes(MAX_FILE_BYTES) + " per-file limit."); return; }
+          if (seen.has(key)) return;
+          if (next.length >= MAX_FILES) { errors.push("A maximum of 20 files can be selected."); return; }
+          if (itemCounts(next) + file.size > MAX_BATCH_BYTES) { errors.push("Selected files exceed the " + bytes(MAX_BATCH_BYTES) + " batch limit."); return; }
+          seen.add(key); next.push(file);
+        });
+        state.files = next; drawQueue();
+        if (errors.length) announce(uploadMessage, errors.slice(0, 3).join(" "), "error");
+      }
+      function drawQueue() {
+        queue.innerHTML = state.files.map(function (file, index) {
+          return '<div class="queue-row"><span class="file-badge">' + escapeHtml(badge(file.name)) + '</span><div class="file-meta"><div class="file-name" title="' + escapeHtml(file.name) + '">' + escapeHtml(file.name) + '</div><div class="file-size">' + bytes(file.size) + '</div></div><button type="button" class="icon-button remove-file" data-index="' + index + '" aria-label="Remove ' + escapeHtml(file.name) + '" title="Remove file">×</button></div>';
+        }).join("");
+        document.getElementById("selection-count").textContent = state.files.length ? state.files.length + (state.files.length === 1 ? " file · " : " files · ") + bytes(itemCounts(state.files)) : "No files selected";
+        processButton.disabled = state.files.length === 0;
+        queue.querySelectorAll(".remove-file").forEach(function (button) {
+          button.addEventListener("click", function () { state.files.splice(Number(button.dataset.index), 1); drawQueue(); clearMessage(uploadMessage); });
+        });
+      }
+
+      function renderSheet(sheet) {
+        const rows = sheet.rows || [], shown = rows.slice(0, 30);
+        const table = shown.length ? '<div class="table-wrap"><table><tbody>' + shown.map(function (row) { return "<tr>" + row.map(function (cell) { return "<td>" + escapeHtml(cell) + "</td>"; }).join("") + "</tr>"; }).join("") + "</tbody></table></div>" : '<div class="empty-text">No displayed rows in this sheet.</div>';
+        const note = rows.length > shown.length ? '<div class="preview-note">Previewing ' + shown.length + " of " + rows.length + " extracted rows. Download JSON for the full stored extraction.</div>" : "";
+        return '<details class="sheet"><summary>' + escapeHtml(sheet.name) + " · " + (sheet.row_count || rows.length) + " rows · " + (sheet.column_count || 0) + " columns</summary>" + table + note + "</details>";
+      }
+      function textForResult(result) {
+        const parts = [];
+        (result.pages || []).forEach(function (page) { if (page.text) parts.push("Page " + page.page + "\n" + page.text); });
+        (result.sheets || []).forEach(function (sheet) { parts.push("Sheet: " + sheet.name); (sheet.rows || []).forEach(function (row) { parts.push(row.map(function (cell) { return cell == null ? "" : String(cell); }).join("\t")); }); });
+        return parts.join("\n\n");
+      }
+      function renderResultBody(result) {
+        const warnings = (result.warnings || []).map(function (warning) { return '<div class="warning">' + escapeHtml(warning) + "</div>"; }).join("");
+        const error = result.error ? '<div class="error-box"><strong>' + escapeHtml(result.error.code || "error") + ":</strong> " + escapeHtml(result.error.message || "Extraction failed.") + "</div>" : "";
+        const pages = (result.pages || []).map(function (page) {
+          const method = page.extraction === "digital_text" ? "Embedded text" : page.extraction === "ocr" ? "OCR" : "Text extraction";
+          const confidence = page.ocr_confidence == null ? "" : " · " + escapeHtml(page.ocr_confidence) + "% confidence";
+          const body = page.text ? '<pre class="text-preview">' + escapeHtml(page.text) + "</pre>" : '<div class="empty-text">No readable text was found on this page.</div>';
+          return '<details class="page"><summary>Page ' + String(page.page).padStart(2, "0") + " · " + method + confidence + "</summary>" + body + "</details>";
+        }).join("");
+        const sheets = (result.sheets || []).map(renderSheet).join("");
+        const hasExtractedData = Boolean((result.pages || []).length || (result.sheets || []).length);
+        const actions = hasExtractedData ? '<div class="detail-actions"><button type="button" class="button button-secondary copy-text">Copy extracted text</button><button type="button" class="button button-secondary download-json">Download JSON</button></div>' : "";
+        return warnings + error + pages + sheets + actions;
+      }
+      function wireDetailActions(root, result) {
+        const copy = root.querySelector(".copy-text");
+        if (copy) copy.addEventListener("click", async function () {
+          try { await navigator.clipboard.writeText(textForResult(result)); announce(uploadMessage, "Extracted content copied to the clipboard.", "success"); }
+          catch (_) { announce(uploadMessage, "Clipboard access is unavailable in this browser.", "error"); }
+        });
+        const download = root.querySelector(".download-json");
+        if (download) download.addEventListener("click", function () { downloadJson(result, result.filename || "document-result"); });
+      }
+      function downloadJson(value, name) {
+        const blob = new Blob([JSON.stringify(value, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob), link = document.createElement("a");
+        link.href = url; link.download = name.replace(/[\\/:*?"<>|]/g, "_") + ".json"; link.click();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      }
+      function resultCard(result) {
+        const meta = (result.file_type || "file").toUpperCase() + " · " + (result.page_count ? result.page_count + (result.page_count === 1 ? " page" : " pages") : result.sheet_count ? result.sheet_count + (result.sheet_count === 1 ? " sheet" : " sheets") : bytes(result.file_size_bytes || 0));
+        return '<article class="result-card"><div class="result-top"><span class="file-badge">' + escapeHtml(badge(result.filename)) + '</span><div class="result-name"><strong title="' + escapeHtml(result.filename) + '">' + escapeHtml(result.filename) + '</strong><div class="result-meta">' + meta + '</div></div><span class="status ' + statusClass(result.status) + '">' + statusName(result.status) + '</span></div><div class="result-detail">' + renderResultBody(result) + '</div></article>';
+      }
+      function drawBatch(data) {
+        state.batch = data;
+        const section = document.getElementById("batch-section"); section.classList.remove("hidden");
+        document.getElementById("batch-subtitle").textContent = (data.files_received || 0) + ((data.files_received || 0) === 1 ? " file processed" : " files processed") + (data.history_saved ? " · extraction results saved to the local library" : " · results could not be saved to the local library");
+        const summary = data.summary || {};
+        document.getElementById("batch-stats").innerHTML = '<div class="stat"><strong>' + (data.files_received || 0) + '</strong><span>Files processed</span></div><div class="stat"><strong>' + (summary.success || 0) + '</strong><span>Complete</span></div><div class="stat"><strong>' + (summary.partial || 0) + '</strong><span>Partial</span></div><div class="stat"><strong>' + (summary.error || 0) + '</strong><span>Failed</span></div>';
+        document.getElementById("batch-results").innerHTML = (data.results || []).map(resultCard).join("") || '<div class="empty-state">The service returned no file results.</div>';
+        document.getElementById("batch-results").querySelectorAll(".copy-text, .download-json").forEach(function (button) {
+          const card = button.closest(".result-card"), name = card.querySelector(".result-name strong").textContent;
+          const index = Array.from(document.querySelectorAll("#batch-results .result-card")).indexOf(card), result = (data.results || [])[index];
+          wireOneDetailAction(button, result, name);
+        });
+        if (!data.history_saved) announce(document.getElementById("batch-message"), "Extraction succeeded, but the local library could not save this batch. Check the service log and available disk space.", "error");
+        else clearMessage(document.getElementById("batch-message"));
+        section.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      function wireOneDetailAction(button, result) {
+        if (!result) return;
+        if (button.classList.contains("copy-text")) button.addEventListener("click", async function () {
+          try { await navigator.clipboard.writeText(textForResult(result)); announce(uploadMessage, "Extracted content copied to the clipboard.", "success"); }
+          catch (_) { announce(uploadMessage, "Clipboard access is unavailable in this browser.", "error"); }
+        });
+        if (button.classList.contains("download-json")) button.addEventListener("click", function () { downloadJson(result, result.filename || "document-result"); });
+      }
+      async function processFiles() {
+        if (!state.files.length) return;
+        processButton.disabled = true; processButton.innerHTML = '<span class="spinner" aria-hidden="true"></span> Processing…';
+        announce(uploadMessage, "Uploading and extracting your files. Large scans may take longer.", "info");
+        const form = new FormData(); state.files.forEach(function (file) { form.append("files", file, file.name); });
+        try {
+          const response = await fetch("/ingest", { method: "POST", body: form });
+          const data = await readJson(response); drawBatch(data); state.files = []; input.value = ""; drawQueue();
+          if (data.history_saved) announce(uploadMessage, "Batch processed. Your extraction results are now in the local library.", "success");
+          await refreshLibrary();
+        } catch (error) { announce(uploadMessage, error.message || "The document service could not be reached.", "error"); }
+        finally { processButton.disabled = state.files.length === 0; processButton.innerHTML = 'Process documents <span aria-hidden="true">→</span>'; }
+      }
+
+      function summaryHtml(summary, total) {
+        const s = summary || {};
+        return '<span class="summary-pill">' + total + ' stored</span><span class="summary-pill">' + (s.success || 0) + ' complete</span><span class="summary-pill">' + (s.partial || 0) + ' partial</span><span class="summary-pill">' + (s.error || 0) + ' failed</span>';
+      }
+      function recordCard(record) {
+        const pageSheet = record.page_count ? record.page_count + (record.page_count === 1 ? " page" : " pages") : record.sheet_count ? record.sheet_count + (record.sheet_count === 1 ? " sheet" : " sheets") : "No readable pages or sheets";
+        const warning = (record.warnings || []).map(function (text) { return '<div class="warning">' + escapeHtml(text) + "</div>"; }).join("");
+        const err = record.error_message ? '<div class="error-box">' + escapeHtml(record.error_message) + "</div>" : "";
+        return '<article class="library-row" data-id="' + escapeHtml(record.id) + '"><div class="library-row-top"><span class="file-badge">' + escapeHtml(badge(record.filename)) + '</span><div class="result-name"><strong title="' + escapeHtml(record.filename) + '">' + escapeHtml(record.filename) + '</strong><div class="result-meta">' + escapeHtml((record.file_type || "file").toUpperCase()) + " · " + pageSheet + " · " + bytes(record.file_size_bytes) + " · " + escapeHtml(readableDate(record.created_at)) + '</div></div><span class="status ' + statusClass(record.status) + '">' + statusName(record.status) + '</span><div class="library-actions"><button type="button" class="button button-secondary" data-action="view" data-id="' + escapeHtml(record.id) + '">View result</button><button type="button" class="button button-danger" data-action="delete" data-id="' + escapeHtml(record.id) + '">Delete</button></div></div>' + ((warning || err) ? '<div class="library-detail">' + warning + err + '</div>' : '') + '<div class="library-detail hidden" data-detail-for="' + escapeHtml(record.id) + '"></div></article>';
+      }
+      async function refreshLibrary() {
+        const requestId = ++state.requestId;
+        const status = document.getElementById("library-status"), button = document.getElementById("refresh-button");
+        button.disabled = true; button.textContent = "Refreshing…"; clearMessage(status);
+        const params = new URLSearchParams({ q: document.getElementById("search-input").value.trim(), file_type: document.getElementById("type-select").value, limit: "100", offset: "0" });
+        try {
+          const response = await fetch("/documents?" + params.toString()); const data = await readJson(response);
+          if (requestId !== state.requestId) return;
+          document.getElementById("library-summary").innerHTML = summaryHtml(data.summary, data.total || 0);
+          const records = data.documents || [];
+          libraryList.innerHTML = records.map(recordCard).join("") || '<div class="empty-state">' + (document.getElementById("search-input").value.trim() ? "No saved results match this search." : "No processed documents yet. Add files above to build your local results library.") + "</div>";
+          if ((data.total || 0) > records.length) announce(status, "Showing the latest " + records.length + " of " + data.total + " matches. Refine your search to narrow the list.", "info");
+          bindLibraryActions();
+        } catch (error) {
+          if (requestId === state.requestId) announce(status, error.message || "Could not load the local results library.", "error");
+        } finally {
+          if (requestId === state.requestId) { button.disabled = false; button.textContent = "Refresh results"; }
+        }
+      }
+      function bindLibraryActions() {
+        libraryList.querySelectorAll('[data-action="view"]').forEach(function (button) {
+          button.addEventListener("click", async function () {
+            const id = button.dataset.id, panel = libraryList.querySelector('[data-detail-for="' + CSS.escape(id) + '"]');
+            if (!panel) return;
+            if (!panel.classList.contains("hidden")) { panel.classList.add("hidden"); button.textContent = "View result"; return; }
+            button.disabled = true; button.textContent = "Loading…";
+            try {
+              let result = state.details.get(id);
+              if (!result) { result = await readJson(await fetch("/documents/" + encodeURIComponent(id))); state.details.set(id, result); }
+              panel.innerHTML = renderResultBody(result); panel.classList.remove("hidden"); wireDetailActions(panel, result); button.textContent = "Hide result";
+            } catch (error) { announce(document.getElementById("library-status"), error.message || "Could not load this extraction.", "error"); button.textContent = "View result"; }
+            finally { button.disabled = false; }
+          });
+        });
+        libraryList.querySelectorAll('[data-action="delete"]').forEach(function (button) {
+          button.addEventListener("click", async function () {
+            const row = button.closest(".library-row"), title = row && row.querySelector(".result-name strong").textContent;
+            if (!window.confirm('Delete the saved extraction for "' + title + '" from this local library? This cannot be undone.')) return;
+            button.disabled = true;
+            try { await readJson(await fetch("/documents/" + encodeURIComponent(button.dataset.id), { method: "DELETE" })); state.details.delete(button.dataset.id); await refreshLibrary(); }
+            catch (error) { announce(document.getElementById("library-status"), error.message || "Could not delete this saved result.", "error"); button.disabled = false; }
+          });
+        });
+      }
+
+      async function showOcrStatus() {
+        const tagText = document.getElementById("ocr-tag-text"), dot = document.getElementById("ocr-dot"), note = document.getElementById("ocr-note"), noteText = document.getElementById("ocr-note-text");
+        try {
+          const data = await readJson(await fetch("/health/ocr"));
+          if (data.available) { tagText.textContent = "OCR ready"; dot.classList.remove("warn"); note.classList.add("ready"); noteText.textContent = "Tesseract is ready on this computer. Scanned PDFs and images can be recognized."; }
+          else { tagText.textContent = "OCR setup needed"; noteText.textContent = data.message || "Install the Tesseract engine, then restart the local server."; }
+        } catch (_) { tagText.textContent = "OCR status unavailable"; noteText.textContent = "The OCR engine status could not be checked. Digital PDF text and spreadsheet parsing are still available."; }
+      }
+
+      async function applyServiceConfig() {
+        try {
+          const config = await readJson(await fetch("/health"));
+          if (Number.isFinite(Number(config.max_files_per_request))) MAX_FILES = Number(config.max_files_per_request);
+          if (Number.isFinite(Number(config.max_upload_bytes))) MAX_FILE_BYTES = Number(config.max_upload_bytes);
+          if (Number.isFinite(Number(config.max_batch_bytes))) MAX_BATCH_BYTES = Number(config.max_batch_bytes);
+          document.getElementById("upload-limits").textContent = "Up to " + MAX_FILES + " files · " + bytes(MAX_FILE_BYTES) + " each · " + bytes(MAX_BATCH_BYTES) + " per batch";
+          const storageNote = document.getElementById("storage-note");
+          if (config.storage_mode === "ephemeral") {
+            storageNote.textContent = "Cloud processing: Files are sent to this Vercel deployment for extraction and originals are discarded afterward. The saved-results library uses temporary storage and may reset when the service restarts. This deployment allows " + bytes(MAX_FILE_BYTES) + " per file, " + bytes(MAX_BATCH_BYTES) + " per batch, " + (config.max_pdf_pages || 10) + " PDF pages, and " + Number(config.max_table_cells || 20000).toLocaleString() + " spreadsheet cells per file.";
+          } else {
+            storageNote.textContent = "Local storage: Extracted results and filenames are saved in this app’s local database. Original uploaded files are deleted after processing.";
+          }
+          drawQueue();
+        } catch (_) { /* Keep the local defaults if the service metadata is unavailable. */ }
+      }
+
+      document.getElementById("process-button").addEventListener("click", processFiles);
+      document.getElementById("refresh-button").addEventListener("click", function (event) { event.preventDefault(); refreshLibrary(); });
+      document.getElementById("library-form").addEventListener("submit", function (event) { event.preventDefault(); refreshLibrary(); });
+      document.getElementById("search-input").addEventListener("input", function () { clearTimeout(state.searchTimer); state.searchTimer = setTimeout(refreshLibrary, 300); });
+      document.getElementById("type-select").addEventListener("change", refreshLibrary);
+      document.getElementById("batch-download").addEventListener("click", function () { if (state.batch) downloadJson(state.batch, "document-extraction-batch"); });
+      document.getElementById("browse-button")?.addEventListener("click", function (event) { event.stopPropagation(); input.click(); });
+      dropzone.addEventListener("click", function () { input.click(); });
+      dropzone.addEventListener("keydown", function (event) { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); input.click(); } });
+      input.addEventListener("change", function () { addFiles(input.files); input.value = ""; });
+      ["dragenter", "dragover"].forEach(function (name) { dropzone.addEventListener(name, function (event) { event.preventDefault(); dropzone.classList.add("dragover"); }); });
+      ["dragleave", "drop"].forEach(function (name) { dropzone.addEventListener(name, function (event) { event.preventDefault(); dropzone.classList.remove("dragover"); }); });
+      dropzone.addEventListener("drop", function (event) { addFiles(event.dataTransfer.files); });
+
+      drawQueue(); refreshLibrary(); showOcrStatus(); applyServiceConfig();
+    }());
+  </script>
+</body>
+</html>

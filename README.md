@@ -90,4 +90,3 @@ Vercel uses lower upload, page, and spreadsheet limits to stay within its functi
 
 For a scanned PDF, OCR is triggered page by page only where embedded text is missing or too sparse. If Tesseract is unavailable, digital pages still extract and scan pages return partial results with warnings. Corrupt or unsupported files return an error object without stopping other files in the request.
 
-
